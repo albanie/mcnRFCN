@@ -14,7 +14,7 @@ the terms of the BSD license (see the COPYING file).
 
 #include <bits/mexutils.h>
 #include <bits/datamex.hpp>
-#include <bits/nnpsroipooling.hpp>
+#include "bits/nnpsroipooling.hpp"
 
 #if ENABLE_GPU
 #include <bits/datacu.hpp>
@@ -200,7 +200,6 @@ void mexFunction(int nout, mxArray *out[],
   }
 
   size_t numROIs = rois.getNumElements() / 5 ;
-  mexPrintf("num rois %d \n", numROIs) ;
   if (! vl::areCompatible(data, rois)) {
     vlmxError(VLMXE_IllegalArgument, 
             "DATA and ROI do not have compatible formats.") ;

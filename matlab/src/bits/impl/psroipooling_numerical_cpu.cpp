@@ -13,7 +13,7 @@ the terms of the BSD license (see the COPYING file).
 */
 
 #include "matrix.h"
-#include "../data.hpp"
+#include <bits/data.hpp>
 #include "psroipooling.hpp"
 
 #include <limits>

@@ -13,7 +13,7 @@ the terms of the BSD license (see the COPYING file).
 */
 
 #include "psroipooling.hpp"
-#include "../datacu.hpp"
+#include <bits/datacu.hpp>
 #include <assert.h>
 #include <stdio.h>
 #include <cfloat>

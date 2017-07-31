@@ -47,4 +47,17 @@ function fix_imports(varargin)
     end
   end
 
+  % add pascal classes if not present
+  classes = {'background', 'aeroplane', 'bicycle', 'bird', ...
+     'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', ...
+     'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', ...
+     'sofa', 'train', 'tvmonitor'} ; 
+  net.meta.classes.name = classes ; 
+
+  if isempty(net.meta.normalization.averageImage)
+    rgb = [122.771, 115.9465, 102.9801] ; % imagenet mean used in orig faster rcnn
+    net.meta.normalization.averageImage = permute(rgb, [3 1 2]) ;
+  end
+
   net = net.saveobj() ; save(modelPath, '-struct', 'net') ; %#ok
+

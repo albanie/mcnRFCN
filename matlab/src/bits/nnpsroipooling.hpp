@@ -14,7 +14,7 @@ the terms of the BSD license (see the COPYING file).
 #ifndef __vl__nnpsroipooling__
 #define __vl__nnpsroipooling__
 
-#include "data.hpp"
+#include <bits/data.hpp>
 #include <stdio.h>
 
 namespace vl {

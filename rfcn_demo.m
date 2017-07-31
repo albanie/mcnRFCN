@@ -11,7 +11,7 @@ function rfcn_demo(varargin)
 
   % The network is trained to prediction occurences
   % of the following classes from the pascal VOC challenge
-  classes = {'none_of_the_above', 'aeroplane', 'bicycle', 'bird', ...
+  classes = {'background', 'aeroplane', 'bicycle', 'bird', ...
      'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', ...
      'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', ...
      'sofa', 'train', 'tvmonitor'} ;
@@ -54,21 +54,12 @@ function rfcn_demo(varargin)
   factor = max(opts.scale ./ imsz) ; 
   if any((imsz * factor) > maxSc), factor = min(maxSc ./ imsz) ; end
   newSz = factor .* imsz ; imInfo = [ round(newSz) factor ] ;
+  % subtract mean and subtract mean
   data = imresize(im, factor, 'bilinear') ; 
+  data = bsxfun(@minus, data, net.meta.normalization.averageImage) ;
 
   % run network and retrieve results
   net.eval({'data', data, 'im_info', single(imInfo)}) ;
-
-  if 1
-    %net.removeLayer('classifier_0') ;
-    for ii = 1:numel(net.layers)
-      lName = net.layers(ii).name ;
-      out = net.layers(ii).outputs{1} ;
-      sz = size(net.vars(net.getVarIndex(out)).value) ;
-      if numel(sz) == 2, sz = [ sz 1 ] ; end %#ok
-      fprintf('size %s: [%d x %d x %d]\n', lName, sz(1), sz(2), sz(3)) ;
-    end
-  end
 
   probs = squeeze(net.vars(clsIdx).value) ;
   deltas = squeeze(net.vars(bboxIdx).value) ;
@@ -76,9 +67,9 @@ function rfcn_demo(varargin)
 
   % Visualize results for one class at a time
   for i = 2:numel(classes)
-    c = find(strcmp(classes{i}, net.meta.classes.name)) ;
+    c = strcmp(classes{i}, net.meta.classes.name) ;
     cprobs = probs(c,:) ;
-    cdeltas = deltas(4*(c-1)+(1:4),:)' ;
+    cdeltas = deltas(5:8,:)' ; % class agnostic (so only skip bg)
 
     cboxes = bbox_transform_inv(boxes, cdeltas);
     cls_dets = [cboxes cprobs'] ;
