@@ -63,7 +63,7 @@ function [aps, speed] = rfcn_pascal_evaluation(varargin)
   % configure batch opts
   batchOpts.scale = 600 ;
   batchOpts.maxScale = 1000 ;
-  batchOpts.use_vl_imreadjpeg = 1 ; 
+  batchOpts.use_vl_imreadjpeg = 0 ; 
   batchOpts.batchSize = numel(opts.gpus) * 1 ;
   batchOpts.numThreads = numel(opts.gpus) * 4 ;
   batchOpts.averageImage = net.meta.normalization.averageImage ;
@@ -217,9 +217,8 @@ function net = configureNet(net, opts)
   proposals = Layer.create(@vl_nnproposalrpn, in) ;
   proposals.name = prev.name ;
   cls_head.find(@vl_nnpsroipool, 1).inputs{2} = proposals ; % reattach 
+  bbox_head.find(@vl_nnpsroipool, 1).inputs{2} = proposals ; % reattach 
 
   % use standard output variable names for detection
-  cls_head.name = 'cls_prob' ;
-  bbox_head.name = 'bbox_pred' ;
-
+  cls_head.name = 'cls_prob' ; bbox_head.name = 'bbox_pred' ;
   net = Net(cls_head, bbox_head) ; % recompile

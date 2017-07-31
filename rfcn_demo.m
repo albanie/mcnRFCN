@@ -1,5 +1,22 @@
 function rfcn_demo(varargin)
 %RFCN_DEMO Minimalistic demonstration of the R-FCN detector
+%   FRCN_DEMO an object detection demo with a R-FCN model
+%
+%   DEMO_RESNEXT(..., 'option', value, ...) accepts the following
+%   options:
+%
+%   `modelPath`:: ''
+%    Path to a valid R-FCN matconvnet model. If none is provided, a model
+%    will be downloaded.
+%
+%   `gpus`:: []
+%    Device on which to run network 
+%
+%   `wrapper`:: 'dagnn'
+%    The matconvnet wrapper to be used (both dagnn and autonn are supported) 
+%
+% Copyright (C) 2017 Samuel Albanie
+% All rights reserved.
 
   opts.modelPath = '' ;
   opts.gpus = 2 ;
@@ -7,6 +24,7 @@ function rfcn_demo(varargin)
   opts.maxScale = 1000 ;
   opts.nmsThresh = 0.3 ;
   opts.confThresh = 0.8 ;
+  opts.wrapper = 'dagnn' ;
   opts = vl_argparse(opts, varargin) ;
 
   % The network is trained to prediction occurences
@@ -34,32 +52,41 @@ function rfcn_demo(varargin)
     opts.modelPath = paths{ok} ;
   end
 
-  % Load the network and put it in test mode.
-  net = load(opts.modelPath) ; net = dagnn.DagNN.loadobj(net);
-  net.mode = 'test' ;
+  % Load the network with the chosen wrapper
+  net = loadModel(opts) ;
 
   % Load example pascal image
   imPath = fullfile(vl_rootnn, 'contrib/mcnRFCN/misc/000017.jpg') ;
   im = single(imread(imPath)) ;
 
   % choose variables to track
-  net.conserveMemory = 0 ;
   clsIdx = net.getVarIndex('cls_prob') ;
   bboxIdx = net.getVarIndex('bbox_pred') ;
   roisIdx = net.getVarIndex('rois') ;
-  %[net.vars([clsIdx bboxIdx roisIdx]).precious] = deal(true) ;
+
+  if strcmp(opts.wrapper, 'dagnn')
+    [net.vars([clsIdx bboxIdx roisIdx]).precious] = deal(true) ;
+  end
 
   % resize to meet the r-fcn size criteria
   imsz = [size(im,1) size(im,2)] ; maxSc = opts.maxScale ; 
   factor = max(opts.scale ./ imsz) ; 
   if any((imsz * factor) > maxSc), factor = min(maxSc ./ imsz) ; end
   newSz = factor .* imsz ; imInfo = [ round(newSz) factor ] ;
-  % subtract mean and subtract mean
+
+  % resize and subtract mean
   data = imresize(im, factor, 'bilinear') ; 
   data = bsxfun(@minus, data, net.meta.normalization.averageImage) ;
 
+  % set inputs
+  sample = {'data', data, 'im_info', imInfo} ;
+  switch opts.wrapper
+    case 'dagnn', inputs = {sample} ; net.mode = 'test' ;
+    case 'autonn', inputs = {sample, 'test'} ;
+  end
+
   % run network and retrieve results
-  net.eval({'data', data, 'im_info', single(imInfo)}) ;
+  net.eval(inputs{:}) ;
 
   probs = squeeze(net.vars(clsIdx).value) ;
   deltas = squeeze(net.vars(bboxIdx).value) ;
@@ -92,4 +119,15 @@ function rfcn_demo(varargin)
               cls_dets(bbox_id,3), cls_dets(bbox_id,4), ...
               cls_dets(bbox_id,end));
     end
+  end
+
+% ----------------------------
+function net = loadModel(opts)
+% ----------------------------
+  net = load(opts.modelPath) ; net = dagnn.DagNN.loadobj(net) ;
+  switch opts.wrapper
+    case 'dagnn' 
+      net.mode = 'test' ; 
+    case 'autonn'
+      out = Layer.fromDagNN(net, @rfcn_autonn_custom_fn) ; net = Net(out{:}) ;
   end
