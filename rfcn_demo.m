@@ -58,7 +58,6 @@ function rfcn_demo(varargin)
 
   % run network and retrieve results
   net.eval({'data', data, 'im_info', single(imInfo)}) ;
-  keyboard
 
   if 1
     %net.removeLayer('classifier_0') ;
