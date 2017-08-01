@@ -9,7 +9,7 @@ described in the [paper](https://www.robots.ox.ac.uk/~vgg/rg/papers/dai16nips.pd
 by Jifeng Dai, Li, Yi, Kaiming He, and Jian Sun (NIPS. 2016).
 ```
 
-The implementation is based on the `py-caffe` implementation made
+The implementation is based on the `py-caffe` code made
 [available](https://github.com/Orpine/py-R-FCN) by [Yuwen Xiong](https://github.com/YuwenXiong).  Pre-trained models released with the caffe code which have been imported into matconvnet can be downloaded [here](http://www.robots.ox.ac.uk/~albanie/models.html#r-fcn-models).
 
 ### Demo
