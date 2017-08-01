@@ -8,11 +8,13 @@ function fix_imports(varargin)
 %  in the caffe import script. The functionality below should be 
 %  moved there once the interface is considered stable.
 
+  opts.dataset = 'pascal' ;
+  opts.modelName = 'rfcn-res50-pascal.mat' ;
   opts.modelDir = fullfile(vl_rootnn, 'data/models-import') ;
   opts = vl_argparse(opts, varargin) ;
 
-  % Res 50 model
-  modelPath = fullfile(opts.modelDir, 'rfcn-res50-pascal.mat') ;
+  % select model
+  modelPath = fullfile(opts.modelDir, opts.modelName) ;
   net = load(modelPath) ; net = dagnn.DagNN.loadobj(net) ; 
   pIdx = net.getLayerIndex('proposal') ; % fix proposal layer opt types
   scales = double(net.layers(pIdx).block.scales) ;
@@ -47,12 +49,19 @@ function fix_imports(varargin)
     end
   end
 
-  % add pascal classes if not present
-  classes = {'background', 'aeroplane', 'bicycle', 'bird', ...
-     'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', ...
-     'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', ...
-     'sofa', 'train', 'tvmonitor'} ; 
+  switch opts.dataset % add classes if not present
+    case 'pascal'
+      classes = {'background', 'aeroplane', 'bicycle', 'bird', ...
+         'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable', ...
+         'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', ...
+         'sofa', 'train', 'tvmonitor'} ; 
+    case 'coco'
+      [map, labels] = getCocoLabelMap() ;
+      net.meta.classes.labelMap = map ; % useful for converting predictions
+      classes = labels ;
+  end
   net.meta.classes.name = classes ; 
+  net.meta.classes.description = classes ; % conform to standard interface
 
   if isempty(net.meta.normalization.averageImage)
     rgb = [122.771, 115.9465, 102.9801] ; % imagenet mean used in orig faster rcnn
@@ -60,4 +69,3 @@ function fix_imports(varargin)
   end
 
   net = net.saveobj() ; save(modelPath, '-struct', 'net') ; %#ok
-

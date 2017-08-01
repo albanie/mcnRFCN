@@ -5,5 +5,5 @@ function setup_mcnRFCN()
   root = fileparts(mfilename('fullpath')) ;
   addpath(root) ;
   addpath(root, [root '/matlab'], [root '/pascal'], [root '/core']) ;
-  addpath( [root '/matlab/mex'], [root '/misc']) ;
+  addpath( [root '/matlab/mex'], [root '/misc'], [root '/coco']) ;
   run(fullfile(vl_rootnn, 'contrib/mcnFasterRCNN/setup_mcnFasterRCNN')) ;
