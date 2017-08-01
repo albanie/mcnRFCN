@@ -35,7 +35,7 @@ Due to the significant similarity in model design, this code re-uses part of the
   
 ### Performance
 
-The scores produced by the pretrained models are listed on the [model page](http://www.robots.ox.ac.uk/~albanie/models.html#r-fcn-models).  Running the detector with on multiple GPUs produces a significant speed boost during inference.  Timings are shown below for the model based on the `ResNet 50` and `ResNet 101` models, averaged over a portion of the `pascal 2007` test set using a Tesla M40 GPU with a single image minibatch.  These benchmarks should be considered extremely apprxoimate - the variance on each image is high (due to differing input sizes), and they do not include the final short round of NMS. :
+The scores produced by the pretrained models are listed on the [model page](http://www.robots.ox.ac.uk/~albanie/models.html#r-fcn-models).  Running the detector with on multiple GPUs produces a significant speed boost during inference.  Timings are shown below for the model based on the `ResNet 50` and `ResNet 101` models, averaged over a portion of the `pascal 2007` test set using a Tesla M40 GPU with a single image minibatch.  These benchmarks should be considered extremely apprxoimate - the variance on each image is high (due to differing input sizes), and they do not include the final short round of NMS :
 
 
 | model      | Single GPU | 2 GPUs   |
