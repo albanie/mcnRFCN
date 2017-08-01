@@ -10,12 +10,10 @@ by Jifeng Dai, Li, Yi, Kaiming He, and Jian Sun (NIPS. 2016).
 ```
 
 This code is based on the `py-caffe` implementation 
-[made available](https://github.com/Orpine/py-R-FCN) by [Yuwen Xiong](https://github.com/Orpine).
+[made available](https://github.com/Orpine/py-R-FCN) by [Yuwen Xiong](https://github.com/YuwenXiong).
 
 The pre-trained models released with the caffe code which have been imported into matconvnet and 
 can be downloaded [here](http://www.robots.ox.ac.uk/~albanie/models.html#r-fcn-models).
-
-NOTE: The training code is still in the verfication process.
 
 ### Demo
 
@@ -25,11 +23,11 @@ Running the `rfcn_demo.m` script will download a model trained on `pascal voc 20
 
 ### Functionality
 
-There are scripts to evaluate models on the `pascal voc` dataset (the scores produced by the pretrained models are listed on the [model page](http://www.robots.ox.ac.uk/~albanie/models.html#r-fcn-models)).  
+There are scripts to evaluate models on the `pascal voc` and `mscoco` datasets.  The training code is still in the verfication process.
 
 ### Dependencies
 
-Due to the significant similarity in model design, this code re-uses part of the `mcnFasterRCNN` implementation. The following modules should be added (these can be installed with `vl_contrib`):
+Due to the significant similarity in model design, this code re-uses part of the `mcnFasterRCNN` implementation. The following modules are required (these can be installed with `vl_contrib`):
 
 * [autonn](https://github.com/vlfeat/autonn) - a wrapper module for matconvnet
 * [GPU NMS](https://github.com/albanie/mcnNMS) - a CUDA-based implementation of non-maximum supression
@@ -37,10 +35,10 @@ Due to the significant similarity in model design, this code re-uses part of the
   
 ### Performance
 
-Running the detector with on multiple GPUs produces a significant speed boost during inference.  Timings are shown below for the model based on `ResNet 50`, averaged over a portion of the `pascal 2007` test set using a Tesla M40 GPU (these benchmarks should be considered apprxoimate):
+The scores produced by the pretrained models are listed on the [model page](http://www.robots.ox.ac.uk/~albanie/models.html#r-fcn-models).  Running the detector with on multiple GPUs produces a significant speed boost during inference.  Timings are shown below for the model based on the `ResNet 50` and `ResNet 101` models, averaged over a portion of the `pascal 2007` test set using a Tesla M40 GPU with a single image minibatch.  These benchmarks should be considered extremely apprxoimate - the variance on each image is high (due to differing input sizes), and they do not include the final short round of NMS. :
 
-**Multi-GPU code performance:**
 
-| mode      | Single GPU | 2 GPUs   |
-|-----------|-----------|-----------|
-| inference | 7.5 Hz    | 11 Hz     |
+| model      | Single GPU | 2 GPUs   |
+|------------|-----------|-----------|
+| ResNet-50  | 8.3 Hz    | 12.9 Hz   |
+| ResNet-101 | 4.2 Hz    | 7 Hz      |
