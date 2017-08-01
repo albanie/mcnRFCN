@@ -59,7 +59,6 @@ function results = rfcn_coco_evaluation(varargin)
   net = Net(layers{:}) ;
 
   net = configureNet(net, opts) ; % configure NMS/varNames if required
-  modelOpts.get_eval_batch = @faster_rcnn_eval_get_batch ; % re-use
 
   % evaluation options
   opts.prefetch = true ; 

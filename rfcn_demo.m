@@ -2,7 +2,7 @@ function rfcn_demo(varargin)
 %RFCN_DEMO Minimalistic demonstration of the R-FCN detector
 %   FRCN_DEMO an object detection demo with a R-FCN model
 %
-%   DEMO_RESNEXT(..., 'option', value, ...) accepts the following
+%   FRCN_DEMO(..., 'option', value, ...) accepts the following
 %   options:
 %
 %   `modelPath`:: ''
