@@ -1,4 +1,4 @@
-function [aps, speed] = rfcn_pascal_evaluation(varargin)
+function aps = rfcn_pascal_evaluation(varargin)
 %RFCN_PASCAL_EVALUATION Evaluate an R-FCN model on VOC 2007
 %   RFCN_PASCAL_EVALUATION computes and evaluates a set of detections
 %   for a given R-FCN detector on the Pascal VOC 2007 test set.
@@ -38,6 +38,7 @@ function [aps, speed] = rfcn_pascal_evaluation(varargin)
 
   opts.net = [] ;
   opts.gpus = 4 ;
+  opts.benchmarkTiming = 0 ; 
   opts.nms = 'gpu' ;  
   opts.refreshCache = true ;
   opts.evalVersion = 'fast' ;
@@ -72,7 +73,7 @@ function [aps, speed] = rfcn_pascal_evaluation(varargin)
   modelOpts.maxPreds = 300 ; % the maximum number of total preds/img
   modelOpts.nmsThresh = 0.3 ;
   modelOpts.numClasses = 21 ; % includes background for pascal
-  modelOpts.confThresh = 0.05 ;
+  modelOpts.confThresh = 0 ;
   modelOpts.maxPredsPerImage = 100 ; 
   modelOpts.classAgnosticReg = true ; 
   modelOpts.get_eval_batch = @faster_rcnn_eval_get_batch ; % re-use function
@@ -133,9 +134,8 @@ function [opts, imdb] = configureImdbOpts(expDir, opts, imdb)
 % (must be done after the imdb is in place since evaluation
 % paths are set relative to data locations)
 
-  BENCHMARK = 0 ;
-  if BENCHMARK  % benchmark
-    keep = 100 ; testIdx = find(imdb.images.set == 3) ;
+  if opts.benchmarkTiming 
+    keep = 10 ; testIdx = find(imdb.images.set == 3) ;
     imdb.images.set(testIdx(keep+1:end)) = 4 ;
   end
   opts.dataOpts = configureVOC(expDir, opts.dataOpts, 'test') ;

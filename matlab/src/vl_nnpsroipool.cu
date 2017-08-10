@@ -210,8 +210,17 @@ void mexFunction(int nout, mxArray *out[],
   }
   rois.reshape(vl::TensorShape(1, 1, 5, numROIs)) ;
 
+
   vl::TensorShape dataShape = data.getShape();
   dataShape.reshape(4);
+
+  // check output shape is appropriate
+  if ((outChannels * subdivisions[0] * subdivisions[1]) != dataShape.getDepth()) {
+    vlmxError(VLMXE_IllegalArgument, 
+            "The number of PSROIPOOLING input channels should be equal to"
+            "gridSize x numOuputChannels, where gridSize = (subdivisions[1] *"
+             "subdivisions[2])") ;
+  }
 
   /* Get the output geometry */
   vl::TensorShape outputShape(subdivisions[0],
@@ -275,7 +284,6 @@ void mexFunction(int nout, mxArray *out[],
                                        transform,
                                        outChannels) ;
   } else {
-    vlmxError(VLMXE_IllegalArgument, "Backward pass not yet supported.") ;
     error = vl::nnpsroipooling_backward(context,
                                         derData, 
                                         data, 

@@ -295,60 +295,139 @@ psroipooling_backward_cpu (type* derData,
     type v1_ = rois[5 * roi + 2] ;
     type u2_ = rois[5 * roi + 3] ;
     type v2_ = rois[5 * roi + 4] ;
-
-    type u1 = transform[0] * u1_ + transform[2] * v1_ + transform[4] ;
-    type v1 = transform[1] * u1_ + transform[3] * v1_ + transform[5] ;
-    type u2 = transform[0] * u2_ + transform[2] * v2_ + transform[4] ;
-    type v2 = transform[1] * u2_ + transform[3] * v2_ + transform[5] ;
-
-    // First and last pixel of each ROI (rounded
-    // for compatibility with the Caffe definition).
     int roi_image   = (int)rois[5 * roi + 0];
-    int roi_start_h = (int)round(v1) - 1 ;
-    int roi_start_w = (int)round(u1) - 1 ;
-    int roi_end_h   = (int)round(v2) - 1 ;
-    int roi_end_w   = (int)round(u2) - 1 ;
-    int roi_height = max(roi_end_h - roi_start_h + 1, 1) ;
-    int roi_width = max(roi_end_w - roi_start_w + 1, 1) ;
 
-    roi_image = min(max(roi_image - 1,0), (int)size - 1) ;
-    type const * data_offset = data + (roi_image * depth) * (width*height);
-    type * derData_offset = derData + (roi_image * depth) * (width*height);
+    bool NUMERICAL_MATCH = 1 ;
 
-    const type bin_size_h = (double)roi_height / subdivisions[0] ;
-    const type bin_size_w = (double)roi_width / subdivisions[1] ;
+    if (NUMERICAL_MATCH) {
 
-    // For each feature channel.
-    for (int z = 0; z < depth; ++z) {
+      // The upper left coordinates are shifted by 1 to ensure 0-indexing.
+      // Each coordinate is then quantize in image-space to lie exactly over
+      // a set of pixels, then transform to feature space with an axis 
+      // aligned scaling 
+      type roi_start_w = static_cast<type>(round(u1_-1)) * transform[0] ;
+      type roi_start_h = static_cast<type>(round(v1_-1)) * transform[3] ;
+      type roi_end_w = static_cast<type>(round(u2_)) * transform[0] ; 
+      type roi_end_h = static_cast<type>(round(v2_)) * transform[3] ; 
 
-      // For each column of tiles.
-      for (int pw = 0; pw < subdivisions[1]; ++pw) {
-        int wstart = (int)floor(((type)pw) * bin_size_w) ;
-        int wend = (int)ceil(((type)(pw + 1)) * bin_size_w) ;
-        wstart = min(max(wstart + roi_start_w, 0), (int)width) ;
-        wend = min(max(wend + roi_start_w, 0), (int)width) ;
+      // To avoid pooling over empty bins, ensure that every roi in feature
+      // space has non-zero height and width
+      type roi_height = max(roi_end_h - roi_start_h, static_cast<type>(0.1)) ;
+      type roi_width = max(roi_end_w - roi_start_w, static_cast<type>(0.1)) ;
 
-        // For each tile in a column.
-        for (int ph = 0; ph < subdivisions[0]; ++ph) {
-          int hstart = (int)floor(((type)ph) * bin_size_h) ;
-          int hend = (int)ceil(((type)(ph + 1)) * bin_size_h) ;
-          hstart = min(max(hstart + roi_start_h, 0), (int)height) ;
-          hend = min(max(hend + roi_start_h, 0), (int)height) ;
+      // compute the spatial dimensions of each bin in feature space 
+      type bin_size_h = roi_height / static_cast<type>(subdivisions[0]) ;
+      type bin_size_w = roi_width / static_cast<type>(subdivisions[1]) ;
 
-          Accumulator acc(hend - hstart, wend - wstart, *derOutput++) ;
-          for (int w = wstart; w < wend; ++w) {
-            for (int h = hstart; h < hend; ++h) {
-              const int index = w * height + h ;
-              acc.accumulate_backward(&data_offset[index],
-                                      &derData_offset[index]) ;
+      // determine the image id associated with the current roi (there should
+      // be at most one per batch)
+      roi_image = min(max(roi_image - 1,0), (int)size - 1) ;
+
+      // shift the input data pointer to skip inputs associated with previous
+      // image
+      type const * data_offset = data + (roi_image * depth) * (width*height) ;
+      type * derData_offset = derData + (roi_image * depth) * (width*height) ;
+
+        // For each selected out channel.
+      for (int z = 0; z < outChannels; ++z) {
+
+        // For each column of tiles.
+        for (int pw = 0; pw < subdivisions[1]; ++pw) {
+
+          // compute the horizontal bounds of the pooling window for 
+          // the current cell, constaining it to lie in the feature map
+          int wstart = (int)floor(((type)pw) * bin_size_w + roi_start_w) ;
+          int wend = (int)ceil(((type)(pw + 1)) * bin_size_w + roi_start_w) ;
+          wstart = min(max(wstart, 0), (int)width) ;
+          wend = min(max(wend, 0), (int)width) ;
+
+          // For each tile in a column.
+          for (int ph = 0; ph < subdivisions[0]; ++ph) {
+
+            // compute the vertical bounds of the pooling window for 
+            // the current tile, constaining it to lie in the feature map
+            int hstart = (int)floor(((type)ph) * bin_size_h + roi_start_h) ;
+            int hend = (int)ceil(((type)(ph + 1)) * bin_size_h + roi_start_h) ;
+            hstart = min(max(hstart, 0), (int)height) ;
+            hend = min(max(hend, 0), (int)height) ;
+
+            // Finally, we add an additional offset to the input data pointer
+            // which is responsible for selecting the correct "position 
+            // sensitive" features associated with the current tile. In this
+            // case, the channel positions are stored in row major order, so
+            // we must compute offsets accordingly
+            int num_feat_pixels = width * height ;
+            int step_over = (z*subdivisions[0] + ph)*subdivisions[1] + pw - z ;
+            int off = step_over * num_feat_pixels ; 
+
+            Accumulator acc(hend - hstart, wend - wstart, *derOutput++) ;
+            for (int w = wstart ; w < wend; ++w) {
+              for (int h = hstart ; h < hend; ++h) {
+                const int index = off + w * height + h ;
+                acc.accumulate_backward(&data_offset[index],
+                                          &derData_offset[index]) ;
+              }
             }
-          }
-          acc.done_backward() ;
+            acc.done_backward() ;
+          } // end of ph
         } // end of pw
-      } // end of ph
-      data_offset += width*height ;
-      derData_offset += width*height ;
-    } // end of z
+        data_offset += width*height;
+        derData_offset += width*height;
+      } // end of z
+    } else {
+        type u1 = transform[0] * u1_ + transform[2] * v1_ + transform[4] ;
+        type v1 = transform[1] * u1_ + transform[3] * v1_ + transform[5] ;
+        type u2 = transform[0] * u2_ + transform[2] * v2_ + transform[4] ;
+        type v2 = transform[1] * u2_ + transform[3] * v2_ + transform[5] ;
+
+        // First and last pixel of each ROI (rounded
+        // for compatibility with the Caffe definition).
+        int roi_start_h = (int)round(v1) - 1 ;
+        int roi_start_w = (int)round(u1) - 1 ;
+        int roi_end_h   = (int)round(v2) - 1 ;
+        int roi_end_w   = (int)round(u2) - 1 ;
+        int roi_height = max(roi_end_h - roi_start_h + 1, 1) ;
+        int roi_width = max(roi_end_w - roi_start_w + 1, 1) ;
+
+        roi_image = min(max(roi_image - 1,0), (int)size - 1) ;
+        type const * data_offset = data + (roi_image * depth) * (width*height);
+        type * derData_offset = derData + (roi_image * depth) * (width*height);
+
+        const type bin_size_h = (double)roi_height / subdivisions[0] ;
+        const type bin_size_w = (double)roi_width / subdivisions[1] ;
+
+        // For each feature channel.
+        for (int z = 0; z < depth; ++z) {
+
+          // For each column of tiles.
+          for (int pw = 0; pw < subdivisions[1]; ++pw) {
+            int wstart = (int)floor(((type)pw) * bin_size_w) ;
+            int wend = (int)ceil(((type)(pw + 1)) * bin_size_w) ;
+            wstart = min(max(wstart + roi_start_w, 0), (int)width) ;
+            wend = min(max(wend + roi_start_w, 0), (int)width) ;
+
+            // For each tile in a column.
+            for (int ph = 0; ph < subdivisions[0]; ++ph) {
+              int hstart = (int)floor(((type)ph) * bin_size_h) ;
+              int hend = (int)ceil(((type)(ph + 1)) * bin_size_h) ;
+              hstart = min(max(hstart + roi_start_h, 0), (int)height) ;
+              hend = min(max(hend + roi_start_h, 0), (int)height) ;
+
+              Accumulator acc(hend - hstart, wend - wstart, *derOutput++) ;
+              for (int w = wstart; w < wend; ++w) {
+                for (int h = hstart; h < hend; ++h) {
+                  const int index = w * height + h ;
+                  acc.accumulate_backward(&data_offset[index],
+                                          &derData_offset[index]) ;
+                }
+              }
+              acc.done_backward() ;
+            } // end of pw
+          } // end of ph
+          data_offset += width*height ;
+          derData_offset += width*height ;
+        } // end of z
+     } // different numerical implementations
   } // end of n
 }
 

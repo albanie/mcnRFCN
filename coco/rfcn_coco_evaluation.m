@@ -79,7 +79,7 @@ function results = rfcn_coco_evaluation(varargin)
   modelOpts.maxPreds = 300 ; 
   modelOpts.numClasses = 81 ;
   modelOpts.nmsThresh = 0.3 ;
-  modelOpts.confThresh = 0.05 ;
+  modelOpts.confThresh = 0 ;
   modelOpts.maxPredsPerImage = 100 ; 
   modelOpts.classAgnosticReg = true ; 
   modelOpts.get_eval_batch = @faster_rcnn_eval_get_batch ; % re-use
@@ -123,6 +123,7 @@ function results = rfcn_coco_evaluation(varargin)
   opts.cacheOpts = cacheOpts ;
   opts.imdbOpts = imdbOpts ;
 
+
   % re-use the faster-rcnn eval code
   results = faster_rcnn_evaluation(expDir, net, opts) ;
 
@@ -162,7 +163,7 @@ function aps = coco_eval_func(~, decoded, imdb, opts)
   table_ = table(image_id, category_id, bbox, score) ; res = table2struct(table_) ;
 
   % encode as json (this may take a little while...., the gason func adds to storage)
-  cocoJason = jsonencode(res) ;  template = 'detections_%s%d_%s%d.mat' ; 
+  cocoJason = gason(res) ;  template = 'detections_%s%d_%s%d.mat' ; 
   resFile = sprintf(template, opts.testset, opts.dataOpts.year, opts.modelName) ; 
   resPath = fullfile(opts.cacheOpts.evalCacheDir, resFile) ;
   fid = fopen(resPath, 'w') ; fprintf(fid, cocoJason) ; fclose(fid) ;
@@ -213,6 +214,7 @@ function displayCocoResults(~, aps, opts)
     s = aps.precision(1,:,ii,a,m) ; s=mean(s(s>=0)) * 100 ; 
     fprintf('%.1f: %s \n', s, labels{ii}) ;
   end
+  keyboard
 
 % ------------------------------------
 function net = configureNet(net, opts)

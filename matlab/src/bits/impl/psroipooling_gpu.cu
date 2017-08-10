@@ -187,14 +187,7 @@ psroipooling_average_kernel
       }
     }
     output[outputIndex] = bestValue ;
-    if (b.offset==2161278) {
-      if (b.hstart==32&&b.hend==34&&b.wstart==38&&b.wend==40) {
-          printf("GPU::outputIndex: (%d)\n", outputIndex) ;
-          printf("GPU:: (hstart,hend,wstart,wend): (%d,%d,%d,%d)\n", 
-                                  b.hstart,b.hend,b.wstart,b.wend) ;
-      }
     }
-  }
 }
 
 /* ---------------------------------------------------------------- */
@@ -275,7 +268,6 @@ psroipooling_average_backward_kernel
     data += b.offset ;
     derData += b.offset ;
     const T coeff = ((T)1.) / (T)((b.wend-b.wstart)*(b.hend-b.hstart)) ;
-    // TODO(sam): Fix for channel placement
     for (int h = b.hstart; h < b.hend; ++h) {
       for (int w = b.wstart; w < b.wend; ++w) {
         int index = w * height + h ;
@@ -306,7 +298,6 @@ psroipooling_max_backward_kernel
                             height, width, numChannels, size,
                             rois, numROIs, outChannels,
                             geom) ;
-    // TODO(sam): Fix for channel placement
     if (! b.isEmpty) {
       data += b.offset ;
       derData += b.offset ;

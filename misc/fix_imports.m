@@ -68,4 +68,5 @@ function fix_imports(varargin)
     net.meta.normalization.averageImage = permute(rgb, [3 1 2]) ;
   end
 
+  net.meta.classAgnosticReg = 1 ; % by default, this is the R-FCN approach
   net = net.saveobj() ; save(modelPath, '-struct', 'net') ; %#ok
