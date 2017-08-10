@@ -15,6 +15,21 @@ function rfcn_demo(varargin)
 %   `wrapper`:: 'dagnn'
 %    The matconvnet wrapper to be used (both dagnn and autonn are supported) 
 %
+%   `scale`:: 600
+%    The minimum size (in pixels) to which the shorter image length will be 
+%    resized while preserving aspect ratio
+%
+%   `maxScale`:: 1000
+%    The maximum size (in pixels) to which the longer image length will be 
+%    resized while preserving aspect ratio
+%
+%   `confThresh`:: 0.8
+%    The confidence threshold used to determine whether a prediction is 
+%    considered a detection
+%
+%   `nmsThresh`:: 0.3
+%    The threshold used to perform non-maximum supression
+%
 % Copyright (C) 2017 Samuel Albanie
 % All rights reserved.
 
