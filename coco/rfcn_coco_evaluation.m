@@ -37,7 +37,7 @@ function results = rfcn_coco_evaluation(varargin)
 %    Select year of coco data to run evaluation on.
 %
 % Copyright (C) 2017 Samuel Albanie 
-% All rights reserved.
+% Licensed under The MIT License [see LICENSE.md for details]
 
   opts.net = [] ;
   opts.expDir = '' ; % preserve interface
@@ -79,7 +79,7 @@ function results = rfcn_coco_evaluation(varargin)
   modelOpts.maxPreds = 300 ; 
   modelOpts.numClasses = 81 ;
   modelOpts.nmsThresh = 0.3 ;
-  modelOpts.confThresh = 0 ;
+  modelOpts.confThresh = 0.01 ;
   modelOpts.maxPredsPerImage = 100 ; 
   modelOpts.classAgnosticReg = true ; 
   modelOpts.get_eval_batch = @faster_rcnn_eval_get_batch ; % re-use

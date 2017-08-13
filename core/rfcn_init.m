@@ -44,6 +44,11 @@ function net = rfcn_init(opts, varargin)
   % convert to autonn
   stored = Layer.fromDagNN(net) ; net = stored{1} ;
 
+  % model options
+  numClasses = opts.modelOpts.numClasses ; 
+  agnosticReg = opts.modelOpts.classAgnosticReg ;
+  subdivisions = opts.modelOpts.subdivisions ;
+
   % Region proposal network 
   src = net.find('res4f_relu', 1) ; 
   largs = {'stride', [1 1], 'pad', [1 1 1 1], 'dilate', [1 1]} ; 
@@ -96,7 +101,8 @@ function net = rfcn_init(opts, varargin)
   largs = {'name', 'proposal', 'numInputDer', 0} ; 
   proposals = Layer.create(@vl_nnproposalrpn, args, largs{:}) ;
 
-  args = {proposals, gtBoxes, gtLabels, 'numClasses', opts.modelOpts.numClasses} ;
+  args = {proposals, gtBoxes, gtLabels, 'numClasses', numClasses, ...
+          'classAgnosticReg', agnosticReg} ;
   largs = {'name', 'roi_data', 'numInputDer', 0} ;
   [rois, labels, bbox_targets, bbox_in_w, bbox_out_w, cw] = ...
                    Layer.create(@vl_nnproposaltargets, args, largs{:}) ;
@@ -108,32 +114,31 @@ function net = rfcn_init(opts, varargin)
 
   % position sensitive features (cls)
   largs = {'stride', [1 1], 'pad', 0, 'dilate', [1 1]} ; 
-  channelsOut = opts.modelOpts.numClasses * prod(opts.modelOpts.subdivisions) ;
+  channelsOut = numClasses * prod(subdivisions) ;
   sz = [1 1 1024 channelsOut] ; addRelu = 0 ; 
   rfcn_cls = add_block(new_conv, 'rfcn_cls', opts, sz, addRelu, largs{:}) ;
 
   % position sensitive features (bbox)
   largs = {'stride', [1 1], 'pad', 0, 'dilate', [1 1]} ; 
-  if opts.modelOpts.classAgnosticReg
-    out = 4 * 2 * prod(opts.modelOpts.subdivisions) ;
+  if agnosticReg
+    out = 4 * 2 * prod(subdivisions) ;
   else
-    out = 4 * opts.modelOpts.numClasses * prod(opts.modelOpts.subdivisions) ;
+    out = 4 * numClasses * prod(subdivisions) ;
   end
   sz = [1 1 1024 out] ; addRelu = 0 ; 
   rfcn_bbox = add_block(new_conv, 'rfcn_bbox', opts, sz, addRelu, largs{:}) ;
 
   % psroipool
-  group_size = opts.modelOpts.subdivisions(1) ; % caffe naming convention
-  outChannels = group_size ;
+  group_size = subdivisions(1) ; % caffe naming convention
   largs = {'name', 'psroipooled_cls_rois', 'numInputDer', 1} ;
   args = {rfcn_cls, rois, 'method', 'avg', 'Transform', 1/16, ...
-    'Subdivisions', opts.modelOpts.subdivisions, 'outchannels', outChannels} ;
+    'Subdivisions', subdivisions, 'outchannels', numClasses} ;
   psroipool_cls = Layer.create(@vl_nnpsroipool, args, largs{:}) ;
 
   largs = {'name', 'psroipooled_bbox_rois', 'numInputDer', 1} ;
-  outChannels = opts.modelOpts.subdivisions(1) ;
+  if agnosticReg, out = 4 * 2 ; else, out = 4 * numClasses ; end
   args = {rfcn_bbox, rois, 'method', 'avg', 'Transform', 1/16, ...
-    'Subdivisions', opts.modelOpts.subdivisions, 'outchannels', outChannels} ;
+    'Subdivisions', subdivisions, 'outchannels', out} ;
   psroipool_bbox = Layer.create(@vl_nnpsroipool, args, largs{:}) ;
 
   cls_score = vl_nnpool(psroipool_cls, [group_size group_size], ...
@@ -167,7 +172,18 @@ function net = rfcn_init(opts, varargin)
     net.layers(net.getLayerIndex('pool5')).block.pad = [1 1 1 1] ;
   end
 
-  checkLearningParams(rpn_multitask_loss, multitask_loss, opts) ;
+  if 1 % sanity check
+    checkLearningParams(rpn_multitask_loss, multitask_loss, opts) ;
+  end
+
+  % fix batch norm layers to operate in "test mode" 
+  % TODO(samuel): improve efficiency by performing a proper deployment merge
+  bn_layers = multitask_loss.find(@vl_nnbnorm_wrapper) ;
+  testMode = 1 ;
+  for ii = 1:numel(bn_layers)
+    bn_layers{ii}.inputs{5} = testMode ; % fix 
+  end
+
   net = Net(rpn_multitask_loss, multitask_loss) ;
 
   % set meta information to match original training code
@@ -215,7 +231,7 @@ function checkLearningParams(rpn_loss, loss, opts)
     layer = caffeLayers{ii} ;
     msg = 'checking layer settings (%d/%d): %s\n' ;
     fprintf(msg, ii, numel(caffeLayers), layer.name) ;
-    ignore = {'ReLU', 'Scale', 'Silence', 'Python', 'Eltwise'} ;
+    ignore = {'ReLU', 'Scale', 'Silence', 'Python', 'Eltwise', 'Accuracy'} ;
     if ismember(layer.type, ignore), continue ; end
     mcnLayer = rpn_loss.find(layer.name) ;
     if ~isempty(mcnLayer)
@@ -286,16 +302,19 @@ function checkLearningParams(rpn_loss, loss, opts)
       case 'Pooling' 
         checkFields = {'stride', 'pad', 'method', 'kernel_size'} ;
         kernel_size = str2double(layer.kernel_size) ;
+        stride = str2double(layer.stride) ;
         if isfield(layer, 'pad'), pad = str2double(layer.pad) ; else, pad = 0 ; end
         if numel(kernel_size) == 1, kernel_size = repmat(kernel_size, [1 2]) ; end
         if numel(stride) == 1, stride = repmat(stride, [1 2]) ; end
         if numel(pad) == 1, pad = repmat(pad, [1 4]) ; end
-        caffe.method = lower(layer.pool) ; caffe.pad = pad ; 
+        % different convnetions: mcn `avg` == caffe `ave` (both use 
+        % `max` for max pooling
+        caffe. method = strrep(lower(layer.pool), 'ave', 'avg') ; 
+        caffe.pad = pad ; 
         caffe.stride = stride ; caffe.kernel_size = kernel_size ;
         poolOpts = mcn.inputs(3:end) ;
         poolOpts(strcmp(poolOpts, 'CuDNN')) = [] ;
         mcnArgs = [poolOpts {'kernel_size', mcn.inputs{2}}] ;
-        
       otherwise, fprintf('checking layer type: %s\n', layer.type) ;
     end
     % run checks
@@ -323,6 +342,8 @@ function layers = parseCaffeLayers(opts)
   % create name map
   nameMap = containers.Map ; 
   nameMap('rpn_conv/3x3') = 'rpn_conv_3x3' ;
+  nameMap('psroipooled_loc_rois') = 'psroipooled_bbox_rois' ;
+  nameMap('loss') = 'loss_cls' ; % maintain mcn consistency
   proto = fileread(opts.modelOpts.protoPath) ;
 
   % mini parser
