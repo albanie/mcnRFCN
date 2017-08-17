@@ -22,9 +22,9 @@ Running the `rfcn_demo.m` script will download a model trained on `pascal voc 20
 
 There are scripts to evaluate models on the `pascal voc` and `mscoco` datasets.  The training code is still in the verfication process.
 
-### Dependencies
+### Installation
 
-Due to the significant similarity in model design, this code re-uses part of the `mcnFasterRCNN` implementation. The following modules are required (these can be installed with `vl_contrib`):
+This module can be installed with the MatConvNet `vl_contrib` package manger.  Due to the significant similarity in model design, this code re-uses part of the `mcnFasterRCNN` implementation. The following modules are required (these can also be installed with `vl_contrib`):
 
 * [autonn](https://github.com/vlfeat/autonn) - a wrapper module for matconvnet
 * [GPU NMS](https://github.com/albanie/mcnNMS) - a CUDA-based implementation of non-maximum supression
