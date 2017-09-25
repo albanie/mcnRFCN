@@ -1,7 +1,7 @@
 R-FCN
 ---
 
-This directory contains code to evaluate the R-FCN object detector 
+This repo contains code to download and evaluate the R-FCN object detector 
 described in the [paper](https://www.robots.ox.ac.uk/~vgg/rg/papers/dai16nips.pdf):
 
 ```
@@ -9,11 +9,8 @@ described in the [paper](https://www.robots.ox.ac.uk/~vgg/rg/papers/dai16nips.pd
 by Jifeng Dai, Li, Yi, Kaiming He, and Jian Sun (NIPS. 2016).
 ```
 
-This code is based on the `py-caffe` implementation 
-[made available](https://github.com/Orpine/py-R-FCN) by [Yuwen Xiong](https://github.com/YuwenXiong).
-
-The pre-trained models released with the caffe code which have been imported into matconvnet and 
-can be downloaded [here](http://www.robots.ox.ac.uk/~albanie/models.html#r-fcn-models).
+The implementation is based on the `py-caffe` code made
+[available](https://github.com/Orpine/py-R-FCN) by [Yuwen Xiong](https://github.com/YuwenXiong).  Pre-trained models released with the caffe code which have been imported into matconvnet can be downloaded [here](http://www.robots.ox.ac.uk/~albanie/models.html#r-fcn-models).
 
 ### Demo
 
@@ -25,9 +22,9 @@ Running the `rfcn_demo.m` script will download a model trained on `pascal voc 20
 
 There are scripts to evaluate models on the `pascal voc` and `mscoco` datasets.  The training code is still in the verfication process.
 
-### Dependencies
+### Installation
 
-Due to the significant similarity in model design, this code re-uses part of the `mcnFasterRCNN` implementation. The following modules are required (these can be installed with `vl_contrib`):
+This module can be installed with the MatConvNet `vl_contrib` package manger.  Due to the significant similarity in model design, this code re-uses part of the `mcnFasterRCNN` implementation. The following modules are required (these can also be installed with `vl_contrib`):
 
 * [autonn](https://github.com/vlfeat/autonn) - a wrapper module for matconvnet
 * [GPU NMS](https://github.com/albanie/mcnNMS) - a CUDA-based implementation of non-maximum supression
