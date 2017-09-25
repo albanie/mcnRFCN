@@ -235,8 +235,10 @@ psroipooling_max_kernel
 /*                                                        atomicAdd */
 /* ---------------------------------------------------------------- */
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600 && __CUDACC_VER_MAJOR__ < 8
+#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600 \
+    || __CUDACC_VER_MAJOR__ >= 8 || defined(__doubleAtomicAdd__)
 #else
+  #define __doubleAtomicAdd__
 // an implementation of atomicAdd() for double (really slow)
 // Note that this functionality was added to cuda 8.0
 static __device__ double atomicAdd(double* address, double val)
