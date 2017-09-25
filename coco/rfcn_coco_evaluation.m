@@ -36,8 +36,15 @@ function results = rfcn_coco_evaluation(varargin)
 %   `year` :: 2014
 %    Select year of coco data to run evaluation on.
 %
+%   `cocoAPI` :: fullfile(vl_rootnn, 'data/coco/MatlabAPI')
+%    Path to the ms coco Matlab API (required for imdb construction)
+%
+%   `labelMapFile' :: fullfile(vl_rootnn,'contrib/mcnDatasets/coco/label_map.txt') ;
+%    Path to the mapping between coco categories and indices.  By default, this
+%    will be found from the mcnDatasets module.
+%
 % Copyright (C) 2017 Samuel Albanie 
-% All rights reserved.
+% Licensed under The MIT License [see LICENSE.md for details]
 
   opts.net = [] ;
   opts.expDir = '' ; % preserve interface
@@ -45,12 +52,15 @@ function results = rfcn_coco_evaluation(varargin)
   opts.nms = 'gpu' ;  
   opts.testset = 'val' ;
   opts.useMiniVal = false ; 
-  opts.refreshCache = true ;
+  opts.refreshCache = false ;
   opts.modelName = 'rfcn-res101-coco' ;
   opts.year = 2014 ; % 2015 only contains test instances
   opts.dataRoot = fullfile(vl_rootnn, 'data/datasets') ;
+  opts.cocoAPI = fullfile(vl_rootnn, 'data/coco/MatlabAPI') ;
   opts.debug = false ; % used for visualisation purposes
   opts.benchmarkTiming = false ; 
+  opts.labelMapFile = fullfile(vl_rootnn, ... 
+                                'contrib/mcnDatasets/coco/label_map.txt') ;
   opts = vl_argparse(opts, varargin) ;
 
   % load network and convert to autonn
@@ -84,6 +94,9 @@ function results = rfcn_coco_evaluation(varargin)
   modelOpts.classAgnosticReg = true ; 
   modelOpts.get_eval_batch = @faster_rcnn_eval_get_batch ; % re-use
 
+  % add coco api to path if needed
+  if ~exist('CocoApi', 'file'), addpath(opts.cocoAPI) ; end
+
   % configure dataset options
   dataOpts.name = 'coco' ;
   dataOpts.year = opts.year ;
@@ -96,8 +109,7 @@ function results = rfcn_coco_evaluation(varargin)
   % minival annotations are only used for 2014
   dataOpts.miniValPath = fullfile(opts.dataRoot, ... 
                             'mscoco/annotations/instances_minival2014.json') ;
-  dataOpts.labelMapFile = fullfile(vl_rootnn, ... 
-                                 'contrib/mcnFasterRCNN/coco/label_map.txt') ;
+  dataOpts.labelMapFile = opts.labelMapFile ;
 
   % select imdb based on year
   imdbName = sprintf('imdb%d.mat', opts.year) ;
