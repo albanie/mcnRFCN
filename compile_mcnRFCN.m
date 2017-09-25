@@ -1,64 +1,72 @@
 function compile_mcnRFCN(varargin)
 % COMPILE_MCNRFCN compile the C++/CUDA components of the mcnRFCN module
 
-tokens = {vl_rootnn, 'matlab', 'mex', '.build', 'last_compile_opts.mat'} ;
-last_args_path = fullfile(tokens{:}) ; opts = {} ;
-if exist(last_args_path, 'file'), opts = {load(last_args_path)} ; end
-opts = selectCompileOpts(opts) ;
-vl_compilenn(opts{:}, varargin{:}, 'preCompileFn', @preCompileFn) ;
+  tokens = {vl_rootnn, 'matlab', 'mex', '.build', 'last_compile_opts.mat'} ;
+  last_args_path = fullfile(tokens{:}) ; opts = {} ;
+  if exist(last_args_path, 'file'), opts = {load(last_args_path)} ; end
+  opts = selectCompileOpts(opts) ;
+  vl_compilenn(opts{:}, varargin{:}, 'preCompileFn', @preCompileFn) ;
 
 % -------------------------------------
 function opts = selectCompileOpts(opts) 
 % -------------------------------------
-% really need a better fix at some point.  Oh well. C'est la vie.
-keep = {'enableGpu', 'enableImreadJpeg', 'enableCudnn', 'enableDouble', ...
-        'imageLibrary', 'imageLibraryCompileFlags', ...
-        'imageLibraryLinkFlags', 'verbose', 'debug', 'cudaMethod', ...
-        'cudaRoot', 'cudaArch', 'defCudaArch', 'cudnnRoot', 'preCompileFn'} ; 
-s = opts{1} ;
-f = fieldnames(s) ;
-for i = 1:numel(f)
-  if ~ismember(f{i}, keep)
-    s = rmfield(s, f{i}) ;
+  % really need a better fix at some point.  Oh well. C'est la vie.
+  keep = {'enableGpu', 'enableImreadJpeg', 'enableCudnn', 'enableDouble', ...
+          'imageLibrary', 'imageLibraryCompileFlags', ...
+          'imageLibraryLinkFlags', 'verbose', 'debug', 'cudaMethod', ...
+          'cudaRoot', 'cudaArch', 'defCudaArch', 'cudnnRoot', 'preCompileFn'} ; 
+  s = opts{1} ;
+  f = fieldnames(s) ;
+  for i = 1:numel(f)
+    if ~ismember(f{i}, keep)
+      s = rmfield(s, f{i}) ;
+    end
   end
-end
-opts = {s} ;
+  opts = {s} ;
 
 % ------------------------------------------------------------------------------------
 function [opts, mex_src, lib_src, flags] = preCompileFn(opts, mex_src, lib_src, flags)
 % ------------------------------------------------------------------------------------
 
-root = fullfile(fileparts(mfilename('fullpath')), 'matlab');
-mcn_root = vl_rootnn() ;
+  mcn_root = vl_rootnn() ;
+  root = fullfile(fileparts(mfilename('fullpath')), 'matlab') ;
 
-% Build inside the module path
-flags.src_dir = fullfile(root, 'src') ;
-flags.mex_dir = fullfile(root, 'mex') ;
-flags.bld_dir = fullfile(flags.mex_dir, '.build');
-if ~exist(fullfile(flags.bld_dir,'bits','impl'), 'dir')
-  mkdir(fullfile(flags.bld_dir,'bits','impl')) ;
-end
+  % Build inside the module path
+  flags.src_dir = fullfile(root, 'src') ;
+  flags.mex_dir = fullfile(root, 'mex') ;
+  flags.bld_dir = fullfile(flags.mex_dir, '.build') ;
+  implDir = fullfile(flags.bld_dir,'bits/impl') ;
+  if ~exist(implDir, 'dir'), mkdir(implDir) ; end
+  mex_src = {} ; lib_src = {} ; 
+  if opts.enableGpu, ext = 'cu' ;  else, ext = 'cpp' ; end
 
-lib_src = {} ; mex_src = {} ;
+  % Add mcn dependencies
+  lib_src{end+1} = fullfile(mcn_root, 'matlab/src/bits', ['data.' ext]) ;
+  lib_src{end+1} = fullfile(mcn_root, 'matlab/src/bits', ['datamex.' ext]) ;
+  lib_src{end+1} = fullfile(mcn_root,'matlab/src/bits/impl/copy_cpu.cpp') ;
 
-if opts.enableGpu, ext = 'cu' ; else, ext = 'cpp' ; end
+  if opts.enableGpu
+    lib_src{end+1} = fullfile(mcn_root,'matlab/src/bits/datacu.cu') ;
+    lib_src{end+1} = fullfile(mcn_root,'matlab/src/bits/impl/copy_gpu.cu') ;
+  end
 
-% Add the required MCN Dependencies
-lib_src{end+1} = fullfile(mcn_root,'matlab','src','bits',['data.' ext]) ;
-lib_src{end+1} = fullfile(mcn_root,'matlab','src','bits',['datamex.' ext]) ;
-lib_src{end+1} = fullfile(mcn_root,'matlab','src','bits','impl','copy_cpu.cpp') ;
-if opts.enableGpu
-  lib_src{end+1} = fullfile(mcn_root,'matlab','src','bits','impl','copy_gpu.cu') ;
-  lib_src{end+1} = fullfile(mcn_root,'matlab','src','bits','datacu.cu') ;
-end
-flags.cc{end+1} = sprintf('-I%s', fullfile(mcn_root,'matlab','src'));
+  % ----------------------
+  % include required files
+  % ----------------------
+  % old style include - leave as comment in case users have different setup
+  %if ~isfield(flags, 'cc'), flags.cc = {inc} ; else, flags.cc{end+1} = inc ; end 
 
-% Add module files
-lib_src{end+1} = fullfile(root,'src','bits',['nnpsroipooling.' ext]) ;
-mex_src{end+1} = fullfile(root,'src',['vl_nnpsroipool.' ext]) ;
-% CPU-specific files
-lib_src{end+1} = fullfile(root,'src','bits','impl','psroipooling_cpu.cpp') ;
-% GPU-specific files
-if opts.enableGpu
-  lib_src{end+1} = fullfile(root,'src','bits','impl','psroipooling_gpu.cu') ;
-end
+  % new style include
+  inc = sprintf('-I"%s"', fullfile(mcn_root,'matlab','src')) ;
+  inc_local = sprintf('-I"%s"', fullfile(root, 'src')) ;
+  flags.base{end+1} = inc ; flags.base{end+1} = inc_local ;
+
+  % Add module files
+  lib_src{end+1} = fullfile(root,'src','bits',['nnpsroipooling.' ext]) ;
+  mex_src{end+1} = fullfile(root,'src',['vl_nnpsroipool.' ext]) ;
+  % CPU-specific files
+  lib_src{end+1} = fullfile(root,'src','bits','impl','psroipooling_cpu.cpp') ;
+  % GPU-specific files
+  if opts.enableGpu
+    lib_src{end+1} = fullfile(root,'src','bits','impl','psroipooling_gpu.cu') ;
+  end
