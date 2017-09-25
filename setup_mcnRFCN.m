@@ -3,6 +3,8 @@ function setup_mcnRFCN()
 % to the Matlab path, as well as setting up mcnFasterRCNN as a dependency
 
   % add dependencies
+  check_dependency('autonn') ;
+  check_dependency('mcnNMS') ;
   check_dependency('mcnFasterRCNN') ;
 
   root = fileparts(mfilename('fullpath')) ;
