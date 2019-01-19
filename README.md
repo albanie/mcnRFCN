@@ -1,7 +1,7 @@
 R-FCN
 ---
 
-**NOTICE: This repo is no longer maintained.  For an easy to use object detector that is actively maintained, I recommend considering the PyTorch Mask R-CNN [implementation](https://github.com/facebookresearch/maskrcnn-benchmark).**
+**NOTICE: This repo is no longer maintained.  For an easy-to-use object detector that is actively maintained, I recommend considering the PyTorch Mask R-CNN [implementation](https://github.com/facebookresearch/maskrcnn-benchmark).**
 
 
 This repo contains code to download and evaluate the R-FCN object detector 
